@@ -20,7 +20,7 @@
 using namespace std;
 //////////////////////////
 
-int evaluate(string,int &); //evaluating the commands from user input.
+void evaluate(string,int &); //evaluating the commands from user input.
 void listen(); //just listen to user!
 void ParseVars(vector <string> &tokens,int &Status);
 char ** Token_toArr(vector<string>& tokens);
@@ -46,7 +46,7 @@ void listen()
       external = false; // Reset flag in the next iteration.
       path=getcwd(NULL,0);
       path.replace(0,strlen(getenv("HOME")),"~");
-      cout << "OS SHell: "<<path << "$ " << flush;
+      cout << "OS SHell: "<<path << "> " << flush;
       getline(cin, cmd);
       if(cin.eof()||cmd=="exit")
         break;
@@ -94,7 +94,7 @@ void ParseVars(vector<string>& tokens,int& Status)
 			// after deleting $:
 			if(varName == "?")
 				tokens[index].replace(startPos,varLength,to_string(Status));
-			else // if its a variable
+      else // if its a variable
 			{
 				value=getenv(varName.data()); // get the value of the variable
 				if(value != NULL) // if there was a variable
@@ -107,11 +107,11 @@ void ParseVars(vector<string>& tokens,int& Status)
 }
 
 
-int evaluate(string input, int &Status)
+void evaluate(string input, int &Status)
 {
   //if no input
   if(input.length()==0)
-    return 1;
+    return;
   pid_t pid, pid_son;
   int status;
 
@@ -123,16 +123,39 @@ int evaluate(string input, int &Status)
   string token=tokens[tokens.size()-1];
   if(tokens[tokens.size()-1]=="&" || token[token.size()-1]=='&'){
     external=true;
-    cout<<"detected external command &"<<endl;
+    //now we should remove the & to avoid errors in execvp
+    tokens.erase(tokens.begin()+tokens.size()-1); //we remove the '&' 
+    
+    //other case, it may be like that sleep 5& , fix that later!
+
+    //code..
+
+    //cout<<"detected external command &"<<endl;
   }
 
   /*cout<<"tokens:"<<endl;
 for(unsigned int i=0;i<tokens.size();i++)
-  cout<<tokens[i]<<endl;*/
+  cout<<tokens[i]<<endl;
+  */
   if(tokens[0]=="cd")
   {
     //we've already the path and it's parsed , now we should change the directory
     //note that chdir accept only const char .
+    
+    if(tokens.size()==1)
+    {
+      //cout<<"Only cd"<<endl;
+      Status=chdir(getenv("HOME"));
+      return;
+    }
+    //if we have ~ in the begining, we should expand into user HOME directory.
+    
+    if(tokens[1][0]=='~')
+    { 
+      //cout<<"Founded ~ in the right place"<<endl;
+      tokens[1].replace(tokens[1].find('~'),1,getenv("HOME"));
+    }
+
     vector <string> copy=tokens;
     copy[0].replace(0,copy[0].size(),"");
 
@@ -150,14 +173,9 @@ for(unsigned int i=0;i<tokens.size();i++)
     else{
       Status=res;
     }
-    return res;
+    return;
   }
 
- if ( input== "exit" )
-  {
-    cout<<"c ya!"<<endl;
-    return 0; //exit
-  }
   else if( input =="help")
   {
     cout<<"_______________Available Commands________________"<<endl<<endl<<endl<<endl<<endl<<"-cd [option] - option may be a path or variable $var"<<endl<<endl<<endl<<"-exit    to exit from terminal"<<endl<<"Simple OS SHell Powered by Mahdi Asali And Elon Avi Sror 2018"<<endl<<endl<<endl<<endl<<endl;
@@ -203,7 +221,7 @@ for(unsigned int i=0;i<tokens.size();i++)
      }
   }
 
-  return 13232;//stam
+  return;//stam
 }
 //function converts vector string to array (note that we need this because execvp accept only char * and const char *)
 char ** Token_toArr(vector<string>& tokens)
