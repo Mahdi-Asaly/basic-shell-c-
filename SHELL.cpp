@@ -1,7 +1,7 @@
 //Assignement 2 in OS
 //Building a simple shell
 
-/*  Name: Mahdi Asali ID : 206331795 , Elon avisror ID: xxxxxxxx  */
+/*  Name: Mahdi Asali ID : 206331795 , Elon Avisror ID: 305370801  */
 
 //////////////////////////
 //part1
@@ -23,7 +23,7 @@ using namespace std;
 void evaluate(string,int &); //evaluating the commands from user input.
 void listen(); //just listen to user!
 void ParseVars(vector <string> &tokens,int &Status);
-char ** Token_toArr(vector<string>& tokens);
+char ** Token_toArr(vector<string>& tokens); //execvp (const *file,char *)
 bool external=false; //for &
 /////////////////////////
 
@@ -44,7 +44,7 @@ void listen()
     cout<<"Welcome to my shell!"<<endl<<"Use -help for more commands"<<endl;
     while(1) {
       external = false; // Reset flag in the next iteration.
-      path=getcwd(NULL,0);
+      path=getcwd(NULL,0); 
       path.replace(0,strlen(getenv("HOME")),"~");
       cout << "OS SHell: "<<path << "> " << flush;
       getline(cin, cmd);
@@ -73,17 +73,29 @@ void listen()
 
 
 void ParseVars(vector<string>& tokens,int& Status)
-{
-	// this function handles all the $ expressions //
+{ 
 
+  //1)
+  //cd Desktop
+  //2)
+  //cd $VAR
+  //3)
+  //cd $?
+	// this function handles all the $ expressions //
 	regex variable("\\$[_a-zA-Z][_a-zA-Z0-9]*|\\$\\?");
 	smatch m; // used for regex
 	string varName;
 	size_t startPos;
 	char* value;
 	int varLength;
+  
 	for (unsigned int index=0;index<tokens.size();index++)
 	{
+    //if there are "~" in the input , we should then replace it with HOME path.
+    if(tokens[index].find("~")!= string::npos)
+    {
+      tokens[index].replace(tokens[index].find("~"),1,getenv("HOME"));
+    }
 		startPos=0;
 		while(regex_search(tokens[index],m,variable))
 		{
@@ -93,7 +105,7 @@ void ParseVars(vector<string>& tokens,int& Status)
 			varName.replace(0,1,""); //remove $ from varName
 			// after deleting $:
 			if(varName == "?")
-				tokens[index].replace(startPos,varLength,to_string(Status));
+				tokens[index].replace(startPos,varLength,to_string(Status)); 
       else // if its a variable
 			{
 				value=getenv(varName.data()); // get the value of the variable
@@ -114,23 +126,25 @@ void evaluate(string input, int &Status)
     return;
   pid_t pid, pid_son;
   int status;
-
+  
   vector<string> tokens;
   tokens=split(input); //to split the input into tokens.
   ParseVars(tokens,Status); //we parse variables and replace into real env value.
-
   //check &
-  string token=tokens[tokens.size()-1];
+  string token=tokens[tokens.size()-1];   //cd Desktop&
   if(tokens[tokens.size()-1]=="&" || token[token.size()-1]=='&'){
-    external=true;
+    external=true;  //boolean variable for the "&" existance.
     //now we should remove the & to avoid errors in execvp
-    tokens.erase(tokens.begin()+tokens.size()-1); //we remove the '&' 
-    
-    //other case, it may be like that sleep 5& , fix that later!
+    //example: sleep 5 & 
+    if(tokens[tokens.size()-1]=="&"){
+        tokens.erase(tokens.begin()+tokens.size()-1); //we remove the '&' 
 
-    //code..
+    }
+    //example: sleep 5&
+    else{
+        tokens[tokens.size()-1].replace(tokens[tokens.size()-1].find("&"),1,""); 
 
-    //cout<<"detected external command &"<<endl;
+    }
   }
 
   /*cout<<"tokens:"<<endl;
@@ -144,17 +158,20 @@ for(unsigned int i=0;i<tokens.size();i++)
     
     if(tokens.size()==1)
     {
-      //cout<<"Only cd"<<endl;
       Status=chdir(getenv("HOME"));
       return;
     }
     //if we have ~ in the begining, we should expand into user HOME directory.
+    
+
+    //fix that , to work to every input.
     
     if(tokens[1][0]=='~')
     { 
       //cout<<"Founded ~ in the right place"<<endl;
       tokens[1].replace(tokens[1].find('~'),1,getenv("HOME"));
     }
+
 
     vector <string> copy=tokens;
     copy[0].replace(0,copy[0].size(),"");
@@ -189,11 +206,12 @@ for(unsigned int i=0;i<tokens.size();i++)
      {
        if (execvp(arrTokens[0],arrTokens) == -1)
        {
-         cout<<endl << arrTokens[0] << ": command not found" << endl;
+         cout << arrTokens[0] << ": command not found" << endl;
          exit(127);
        }
      }
      else{
+
        //father
        if(external==true)
         cout<<"["<<pid<<"]"<<endl;// means another process must continue due '&' .
